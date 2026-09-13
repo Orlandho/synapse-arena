@@ -1,0 +1,9 @@
+nodes:
+  - id: titan-01
+    host: 10.0.0.101
+    sector: 1
+    role: worker
+  - id: zen-02
+    host: 10.0.0.102
+    sector: 2
+    role: orchestrator
