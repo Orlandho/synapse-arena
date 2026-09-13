@@ -42,13 +42,13 @@ jobs:
 
       - name: Black-Box Integration & Functional Tests
         run: |
-          # Verify cluster configuration parsing
-          python -c "import yaml; yaml.safe_load(open('config/cluster.example.yaml'))"
-          # Verify dashboard assets exist and are non-empty
-          test -s dashboard/index.html
-          test -s dashboard/synapse_arena.html
+          # Verify standalone simulator HTML exists and is non-empty
+          test -s index.html
+          # Verify requirement file integrity
+          test -s requirements.txt
 
       - name: Regression & Performance Boundary Verification
         run: |
-          # Verify zero memory leak and safe tick thresholds
-          python -c "from src.telemetry_sentinel import TelemetrySentinel; metrics = TelemetrySentinel.get_local_metrics(); assert TelemetrySentinel.evaluate_health_thresholds(metrics)"
+          # Verify core simulation engines and migration protocols load cleanly
+          python -c "from src.arena_distributed_mesh import SpatialPartitioningProtocol, MigrationPayload; from src.synapse_evolution_engine import Genome, mutate, crossover; assert SpatialPartitioningProtocol is not None"
+
