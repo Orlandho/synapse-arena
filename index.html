@@ -713,6 +713,79 @@
     let inspectedOrganism = null;
 
     /* =========================================================
+       SPATIAL FOOD BLOOM CLUSTER SYSTEM
+       ========================================================= */
+    class FoodBloomCluster {
+      constructor(x, y, particleCount = 18) {
+        this.x = x ?? (Math.random() * (width - 160) + 80);
+        this.y = y ?? (Math.random() * (height - 160) + 80);
+        this.maxRadius = 120;
+        this.currentRadius = 10;
+        this.maxLifespan = 300; // ~5 seconds @ 60 FPS
+        this.lifespan = this.maxLifespan;
+        this.pulseRings = [0, 0.33, 0.66]; // Phase offsets for concentric pulse animation
+        this.particlesSpawned = false;
+        this.particleCount = particleCount;
+      }
+
+      spawnParticles(foodsRef) {
+        if (this.particlesSpawned) return;
+        this.particlesSpawned = true;
+        for (let i = 0; i < this.particleCount; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const dist = Math.random() * (this.maxRadius * 0.7);
+          const px = this.x + Math.cos(angle) * dist;
+          const py = this.y + Math.sin(angle) * dist;
+          const food = new FoodParticle(px, py, 40);
+          // Give initial outward radial velocity burst
+          food.vx = Math.cos(angle) * (0.5 + Math.random() * 0.8);
+          food.vy = Math.sin(angle) * (0.5 + Math.random() * 0.8);
+          food.color = '#34d399'; // Emerald bloom highlight tint
+          foodsRef.push(food);
+        }
+      }
+
+      update(foodsRef) {
+        this.lifespan--;
+        if (!this.particlesSpawned && this.lifespan > this.maxLifespan - 15) {
+          this.spawnParticles(foodsRef);
+        }
+      }
+
+      draw() {
+        if (this.lifespan <= 0) return;
+        const progress = 1 - (this.lifespan / this.maxLifespan);
+        const alpha = Math.sin(progress * Math.PI) * 0.55;
+
+        ctx.save();
+        // Concentric pulse animation rings
+        for (let i = 0; i < this.pulseRings.length; i++) {
+          const ringProgress = (progress + this.pulseRings[i]) % 1.0;
+          const ringRadius = ringProgress * this.maxRadius;
+          const ringAlpha = alpha * (1 - ringProgress);
+
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, ringRadius, 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(52, 211, 153, ${ringAlpha})`;
+          ctx.lineWidth = 2 - ringProgress * 1.5;
+          ctx.shadowColor = '#10b981';
+          ctx.shadowBlur = 10 * (1 - ringProgress);
+          ctx.stroke();
+        }
+
+        // Core bloom beacon glow
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, 6 + Math.sin(progress * Math.PI * 8) * 2, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(16, 185, 129, ${alpha * 0.9})`;
+        ctx.shadowColor = '#10b981';
+        ctx.shadowBlur = 15;
+        ctx.fill();
+
+        ctx.restore();
+      }
+    }
+
+    /* =========================================================
        QUANTUM FOOD & DECAY PARTICLES
        ========================================================= */
     class FoodParticle {
@@ -817,6 +890,11 @@
         this.maxTrailLength = species === SPECIES.PREDATOR ? 12 : 8;
         this.lastSector = this.x < width / 2 ? 1 : 2;
         this.alive = true;
+
+        // Visual Radar Sweep properties for Predators
+        this.isHunting = false;
+        this.radarAngle = 0;
+        this.radarSweepSpeed = 0.08;
       }
 
       mutate(rate = 0.15) {
@@ -870,6 +948,7 @@
         let minFoodDist = effectiveSensorRange;
 
         if (this.species === SPECIES.PREDATOR) {
+          this.isHunting = false;
           // Hunt Foragers and Scavengers
           for (let other of organisms) {
             if (!other.alive || other.species === SPECIES.PREDATOR) continue;
@@ -880,6 +959,10 @@
               minFoodDist = dist;
               nearestFood = other;
             }
+          }
+          if (nearestFood) {
+            this.isHunting = true;
+            this.radarAngle += this.radarSweepSpeed;
           }
         } else if (this.species === SPECIES.FORAGER) {
           // Forage Quantum Energy nodes & avoid predators
@@ -1043,10 +1126,43 @@
         ctx.lineWidth = this.genome.size * 0.6;
         ctx.stroke();
 
+        // Draw Sensory Radar Sweep (rotating conical arc) when active hunting Predator
+        const range = isEmpActive ? this.genome.sensorRange * 0.15 : this.genome.sensorRange;
+
+        if (this.species === SPECIES.PREDATOR && this.isHunting && !isEmpActive) {
+          ctx.save();
+          const sweepArcWidth = Math.PI * 0.35; // 63 degree conic arc sweep
+          const startArc = this.heading + Math.sin(this.radarAngle) * (this.genome.sensorFov * 0.5);
+          const endArc = startArc + sweepArcWidth;
+
+          // Radial conical fill gradient
+          const grad = ctx.createRadialGradient(this.x, this.y, 2, this.x, this.y, range);
+          grad.addColorStop(0, 'rgba(244, 63, 94, 0.38)');
+          grad.addColorStop(0.7, 'rgba(244, 63, 94, 0.18)');
+          grad.addColorStop(1, 'rgba(244, 63, 94, 0.0)');
+
+          ctx.beginPath();
+          ctx.moveTo(this.x, this.y);
+          ctx.arc(this.x, this.y, range, startArc - sweepArcWidth * 0.5, startArc + sweepArcWidth * 0.5);
+          ctx.closePath();
+          ctx.fillStyle = grad;
+          ctx.fill();
+
+          // Leading edge highlight line
+          ctx.beginPath();
+          ctx.moveTo(this.x, this.y);
+          ctx.lineTo(this.x + Math.cos(startArc) * range, this.y + Math.sin(startArc) * range);
+          ctx.strokeStyle = '#f43f5e';
+          ctx.lineWidth = 1.2;
+          ctx.shadowColor = '#f43f5e';
+          ctx.shadowBlur = 8;
+          ctx.stroke();
+          ctx.restore();
+        }
+
         // Draw Sensory Raycasts (whiskers) if inspected or predator
         if (isInspected || this.species === SPECIES.PREDATOR) {
           const rays = this.genome.raysCount;
-          const range = isEmpActive ? this.genome.sensorRange * 0.15 : this.genome.sensorRange;
           const fov = this.genome.sensorFov;
           const angleStep = fov / (rays - 1 || 1);
 
@@ -1100,11 +1216,24 @@
        ========================================================= */
     let organisms = [];
     let foods = [];
+    let foodBlooms = [];
+    let lastBloomTime = 0;
+    const BLOOM_INTERVAL = 9000; // Bloom cluster spawns every 9 seconds
+
+    function spawnFoodBloom(x, y) {
+      const bloom = new FoodBloomCluster(x, y);
+      foodBlooms.push(bloom);
+      playTone(750, 0.12, 'sine', 0.04);
+    }
 
     function initSwarm() {
       organisms = [];
       foods = [];
+      foodBlooms = [];
       globalGeneration = 1;
+      lastBloomTime = performance.now();
+      // Spawn initial bloom on reset
+      spawnFoodBloom();
 
       // Seed 18 Apex Predators
       for (let i = 0; i < 18; i++) {
@@ -1231,6 +1360,8 @@
       for (let i = 0; i < 110; i++) {
         foods.push(new FoodParticle(undefined, undefined, 45));
       }
+      // Trigger instant food bloom
+      spawnFoodBloom(width / 2, height / 2);
       playNoise(0.4, 0.08);
       playTone(340, 0.3, 'sawtooth', 0.08);
     });
@@ -1350,6 +1481,24 @@
       ctx.lineWidth = 1.5;
       ctx.stroke();
       ctx.setLineDash([]);
+
+      // Periodic Food Bloom Spawning
+      if (now - lastBloomTime > BLOOM_INTERVAL) {
+        lastBloomTime = now;
+        if (foodBlooms.length < 5) {
+          spawnFoodBloom();
+        }
+      }
+
+      // Update and Draw Food Bloom Clusters
+      for (let i = foodBlooms.length - 1; i >= 0; i--) {
+        const bloom = foodBlooms[i];
+        bloom.update(foods);
+        bloom.draw();
+        if (bloom.lifespan <= 0) {
+          foodBlooms.splice(i, 1);
+        }
+      }
 
       // Draw Gravitational Singularity / Vortex FX if mouse is dragging
       if (mouse.isDown && mouse.x >= 0) {
