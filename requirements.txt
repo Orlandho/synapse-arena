@@ -1,0 +1,5 @@
+pyyaml>=6.0
+httpx>=0.24.0
+websockets>=11.0
+fastembed>=0.2.0; extra == 'rag'
+chromadb>=0.4.0; extra == 'rag'

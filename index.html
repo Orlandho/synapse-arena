@@ -1,0 +1,1396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SYNAPSE ARENA // AUTONOMOUS CYBER-ORGANISM SIMULATOR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,500;0,700;1,400&family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-space: #05070d;
+      --bg-card: rgba(10, 15, 29, 0.78);
+      --border-cyan: rgba(0, 240, 255, 0.35);
+      --border-purple: rgba(168, 85, 247, 0.35);
+      --border-crimson: rgba(244, 63, 94, 0.38);
+      --border-emerald: rgba(16, 185, 129, 0.35);
+      --cyan: #00f0ff;
+      --cyan-glow: rgba(0, 240, 255, 0.5);
+      --crimson: #f43f5e;
+      --crimson-glow: rgba(244, 63, 94, 0.55);
+      --emerald: #10b981;
+      --emerald-glow: rgba(16, 185, 129, 0.5);
+      --purple: #a855f7;
+      --purple-glow: rgba(168, 85, 247, 0.5);
+      --amber: #f59e0b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --font-display: 'Orbitron', -apple-system, sans-serif;
+      --font-sub: 'Rajdhani', -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      background: var(--bg-space);
+      color: var(--text-main);
+      font-family: var(--font-sub);
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Scanlines and CRT vignette */
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.22) 50%),
+                  radial-gradient(circle at center, transparent 65%, rgba(0, 0, 0, 0.65) 100%);
+      background-size: 100% 3px, 100% 100%;
+      pointer-events: none;
+      z-index: 999;
+      opacity: 0.6;
+    }
+
+    /* Top HUD Navigation Bar */
+    header.hud-nav {
+      position: relative;
+      z-index: 100;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 24px;
+      background: rgba(8, 12, 22, 0.85);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border-cyan);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+    }
+
+    .hud-title-group {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .pulse-core {
+      width: 12px;
+      height: 12px;
+      background: var(--cyan);
+      border-radius: 50%;
+      box-shadow: 0 0 10px var(--cyan);
+      position: relative;
+    }
+    .pulse-core::after {
+      content: "";
+      position: absolute;
+      inset: -5px;
+      border-radius: 50%;
+      border: 1.5px solid var(--cyan);
+      animation: pulse-ring 2s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+    }
+    @keyframes pulse-ring {
+      0% { transform: scale(0.5); opacity: 1; }
+      100% { transform: scale(2.4); opacity: 0; }
+    }
+
+    .hud-title {
+      font-family: var(--font-display);
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: 2px;
+      color: #fff;
+    }
+    .hud-title span {
+      color: var(--cyan);
+      text-shadow: 0 0 12px var(--cyan-glow);
+    }
+
+    .hud-stats-bar {
+      display: flex;
+      gap: 20px;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+    }
+
+    .stat-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.04);
+      padding: 4px 10px;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .stat-pill .label { color: var(--text-dim); text-transform: uppercase; font-size: 0.7rem; }
+    .stat-pill .val { color: #fff; font-weight: 700; }
+
+    .nav-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .btn-action {
+      background: rgba(0, 240, 255, 0.08);
+      border: 1px solid var(--border-cyan);
+      color: var(--cyan);
+      font-family: var(--font-mono);
+      font-size: 0.74rem;
+      font-weight: 700;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-action:hover {
+      background: var(--cyan);
+      color: #000;
+      box-shadow: 0 0 14px var(--cyan-glow);
+      transform: translateY(-1px);
+    }
+
+    /* Simulation Viewport & Canvas */
+    .arena-main {
+      position: relative;
+      flex: 1;
+      width: 100vw;
+      overflow: hidden;
+    }
+
+    #arena-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      cursor: crosshair;
+    }
+
+    /* Sector Divider overlay on Canvas */
+    .sector-label {
+      position: absolute;
+      top: 14px;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      background: rgba(5, 8, 15, 0.7);
+      padding: 4px 10px;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      pointer-events: none;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .sector-left { left: 24px; border-color: rgba(0, 240, 255, 0.25); }
+    .sector-right { right: 24px; border-color: rgba(168, 85, 247, 0.25); }
+
+    /* Left Overlay: God-Mode Control Deck */
+    .god-mode-deck {
+      position: absolute;
+      bottom: 24px;
+      left: 24px;
+      width: 290px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-cyan);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-radius: 6px;
+      padding: 16px;
+      z-index: 50;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    }
+
+    .deck-header {
+      font-family: var(--font-display);
+      font-size: 0.88rem;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .god-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .btn-god {
+      padding: 9px 12px;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 0.74rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.04);
+      color: #fff;
+      transition: all 0.2s ease;
+    }
+    .btn-god:hover {
+      transform: translateX(4px);
+    }
+    .btn-supernova:hover { background: rgba(245, 158, 11, 0.2); border-color: var(--amber); color: var(--amber); box-shadow: 0 0 12px rgba(245, 158, 11, 0.4); }
+    .btn-radiation:hover { background: rgba(168, 85, 247, 0.2); border-color: var(--purple); color: var(--purple); box-shadow: 0 0 12px var(--purple-glow); }
+    .btn-emp:hover { background: rgba(0, 240, 255, 0.2); border-color: var(--cyan); color: var(--cyan); box-shadow: 0 0 12px var(--cyan-glow); }
+    .btn-vortex:hover { background: rgba(244, 63, 94, 0.2); border-color: var(--crimson); color: var(--crimson); box-shadow: 0 0 12px var(--crimson-glow); }
+
+    .deck-instructions {
+      margin-top: 10px;
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      color: var(--text-dim);
+      line-height: 1.4;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      padding-top: 8px;
+    }
+
+    /* Right Overlay: Analytics & Leaderboard */
+    .analytics-deck {
+      position: absolute;
+      top: 60px;
+      right: 24px;
+      width: 320px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-purple);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-radius: 6px;
+      padding: 16px;
+      z-index: 50;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .analytics-header {
+      font-family: var(--font-display);
+      font-size: 0.88rem;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    /* Population bars */
+    .pop-matrix {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .pop-row {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .pop-meta {
+      display: flex;
+      justify-content: space-between;
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+    }
+    .pop-track {
+      height: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .pop-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.3s ease;
+    }
+    .pop-crimson { background: var(--crimson); box-shadow: 0 0 8px var(--crimson-glow); }
+    .pop-emerald { background: var(--emerald); box-shadow: 0 0 8px var(--emerald-glow); }
+    .pop-cyan { background: var(--cyan); box-shadow: 0 0 8px var(--cyan-glow); }
+
+    /* Leaderboard Table */
+    .leaderboard-title {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-dim);
+      margin-top: 4px;
+    }
+    .leaderboard-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+    }
+    .leader-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.02);
+      padding: 5px 8px;
+      border-radius: 4px;
+      border-left: 2px solid var(--text-dim);
+    }
+    .leader-row.crimson { border-left-color: var(--crimson); }
+    .leader-row.emerald { border-left-color: var(--emerald); }
+    .leader-row.cyan { border-left-color: var(--cyan); }
+
+    /* Active Organism Inspector HUD */
+    .inspector-card {
+      position: absolute;
+      bottom: 24px;
+      right: 24px;
+      width: 320px;
+      background: rgba(10, 15, 29, 0.85);
+      border: 1px solid var(--border-cyan);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-radius: 6px;
+      padding: 14px;
+      z-index: 50;
+      font-family: var(--font-mono);
+      display: none;
+    }
+
+    .inspector-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--cyan);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 4px;
+    }
+
+    .inspector-specs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      font-size: 0.7rem;
+    }
+    .insp-item { display: flex; flex-direction: column; gap: 1px; }
+    .insp-lbl { color: var(--text-dim); }
+    .insp-val { color: #fff; font-weight: 600; }
+
+    /* EMP Alert Overlay */
+    .emp-banner {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 240, 255, 0.15);
+      border: 2px solid var(--cyan);
+      padding: 14px 28px;
+      border-radius: 6px;
+      font-family: var(--font-display);
+      font-size: 1.4rem;
+      font-weight: 900;
+      letter-spacing: 3px;
+      color: #fff;
+      text-shadow: 0 0 15px var(--cyan-glow);
+      box-shadow: 0 0 35px rgba(0, 240, 255, 0.4);
+      z-index: 200;
+      pointer-events: none;
+      display: none;
+      animation: emp-flicker 0.2s infinite;
+    }
+    @keyframes emp-flicker {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation HUD -->
+  <header class="hud-nav">
+    <div class="hud-title-group">
+      <div class="pulse-core"></div>
+      <div class="hud-title">SYNAPSE <span>ARENA</span> // CYBER-ORGANISM SIM</div>
+    </div>
+
+    <div class="hud-stats-bar">
+      <div class="stat-pill">
+        <span class="label">ENGINE:</span>
+        <span class="val" id="val-fps">60 FPS</span>
+      </div>
+      <div class="stat-pill">
+        <span class="label">GENOME GEN:</span>
+        <span class="val" id="val-generation">GEN #1</span>
+      </div>
+      <div class="stat-pill">
+        <span class="label">POPULATION:</span>
+        <span class="val" id="val-total-pop">90</span>
+      </div>
+      <div class="stat-pill">
+        <span class="label">PARTICLES / FOOD:</span>
+        <span class="val" id="val-food-count">120</span>
+      </div>
+      <div class="stat-pill">
+        <span class="label">SPATIAL CHECKS:</span>
+        <span class="val" id="val-spatial">QUADTREE OK</span>
+      </div>
+    </div>
+
+    <div class="nav-actions">
+      <button class="btn-action" id="btn-audio-toggle">
+        🔊 AUDIO: OFF
+      </button>
+      <button class="btn-action" id="btn-reset-arena">
+        🔄 RESET SWARM
+      </button>
+    </div>
+  </header>
+
+  <!-- Simulation Viewport -->
+  <main class="arena-main" id="arena-container">
+    <canvas id="arena-canvas"></canvas>
+
+    <!-- Sector Badges -->
+    <div class="sector-label sector-left">
+      <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--cyan); box-shadow:0 0 6px var(--cyan);"></span>
+      SECTOR 01: TITAN WORKHORSE [RTX 5060 Ti &bull; 10.0.0.101]
+    </div>
+
+    <div class="sector-label sector-right">
+      <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--purple); box-shadow:0 0 6px var(--purple);"></span>
+      SECTOR 02: ZEN ORCHESTRATOR [RYZEN 5 &bull; 10.0.0.102]
+    </div>
+
+    <!-- EMP Active Alert Banner -->
+    <div class="emp-banner" id="emp-banner">
+      ⚡ EMP SOLAR FLARE ACTIVE // SENSORS JAMMED ⚡
+    </div>
+
+    <!-- God-Mode Controls Deck -->
+    <div class="god-mode-deck">
+      <div class="deck-header">
+        <span>GOD-MODE CONTROLS</span>
+        <span style="font-size:0.68rem; color:var(--cyan);">LEVEL 5</span>
+      </div>
+      <div class="god-buttons">
+        <button class="btn-god btn-supernova" id="btn-supernova">
+          <span>💥</span> TRIGGER QUANTUM SUPERNOVA
+        </button>
+        <button class="btn-god btn-radiation" id="btn-radiation">
+          <span>🧬</span> INDUCE RADIATION MUTATION
+        </button>
+        <button class="btn-god btn-emp" id="btn-emp">
+          <span>⚡</span> SOLAR FLARE (EMP BLAST)
+        </button>
+        <button class="btn-god btn-vortex" id="btn-vortex-mode">
+          <span>🌌</span> VORTEX: <span id="vortex-mode-text" style="color:var(--crimson);">ATTRACT</span>
+        </button>
+      </div>
+      <div class="deck-instructions">
+        &bull; <strong>Left Click & Drag:</strong> Spawn Gravitational Singularity.<br>
+        &bull; <strong>Right Click & Drag:</strong> Repulsive Kinetic Shockwave.<br>
+        &bull; <strong>Click Organism:</strong> Inspect Neural Genome.
+      </div>
+    </div>
+
+    <!-- Real-Time Analytics & Leaderboard Deck -->
+    <div class="analytics-deck">
+      <div class="analytics-header">
+        <span>FACTION TELEMETRY</span>
+        <span id="migration-counter" style="font-size:0.7rem; color:var(--purple); font-family:var(--font-mono);">0 MIGRATIONS</span>
+      </div>
+
+      <div class="pop-matrix">
+        <!-- Predators -->
+        <div class="pop-row">
+          <div class="pop-meta">
+            <span style="color:var(--crimson); font-weight:700;">APEX PREDATORS</span>
+            <span id="count-predator" style="color:#fff;">15</span>
+          </div>
+          <div class="pop-track">
+            <div class="pop-fill pop-crimson" id="bar-predator" style="width: 25%;"></div>
+          </div>
+        </div>
+        <!-- Foragers -->
+        <div class="pop-row">
+          <div class="pop-meta">
+            <span style="color:var(--emerald); font-weight:700;">HERBIVORE FORAGERS</span>
+            <span id="count-forager" style="color:#fff;">45</span>
+          </div>
+          <div class="pop-track">
+            <div class="pop-fill pop-emerald" id="bar-forager" style="width: 55%;"></div>
+          </div>
+        </div>
+        <!-- Scavengers -->
+        <div class="pop-row">
+          <div class="pop-meta">
+            <span style="color:var(--cyan); font-weight:700;">SYMBIOTIC SCAVENGERS</span>
+            <span id="count-scavenger" style="color:#fff;">30</span>
+          </div>
+          <div class="pop-track">
+            <div class="pop-fill pop-cyan" id="bar-scavenger" style="width: 35%;"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="leaderboard-title">MOST FIT NEURAL GENOMES</div>
+      <div class="leaderboard-list" id="leaderboard-container">
+        <!-- Injected dynamically -->
+      </div>
+    </div>
+
+    <!-- Active Organism Inspector HUD -->
+    <div class="inspector-card" id="inspector-card">
+      <div class="inspector-header">
+        <span id="insp-id">SPECIMEN #000</span>
+        <button id="btn-close-insp" style="background:none; border:none; color:var(--text-dim); cursor:pointer; font-family:var(--font-mono);">[X]</button>
+      </div>
+      <div class="inspector-specs">
+        <div class="insp-item">
+          <span class="insp-lbl">SPECIES:</span>
+          <span class="insp-val" id="insp-species">PREDATOR</span>
+        </div>
+        <div class="insp-item">
+          <span class="insp-lbl">GENERATION:</span>
+          <span class="insp-val" id="insp-gen">GEN #1</span>
+        </div>
+        <div class="insp-item">
+          <span class="insp-lbl">ENERGY:</span>
+          <span class="insp-val" id="insp-energy">142.5</span>
+        </div>
+        <div class="insp-item">
+          <span class="insp-lbl">AGE (TICKS):</span>
+          <span class="insp-val" id="insp-age">842</span>
+        </div>
+        <div class="insp-item">
+          <span class="insp-lbl">KILLS / HARVEST:</span>
+          <span class="insp-val" id="insp-kills">4</span>
+        </div>
+        <div class="insp-item">
+          <span class="insp-lbl">MAX SPEED:</span>
+          <span class="insp-val" id="insp-speed">3.4 px/t</span>
+        </div>
+        <div class="insp-item">
+          <span class="insp-lbl">SENSOR RAY RANGE:</span>
+          <span class="insp-val" id="insp-rays">120 px</span>
+        </div>
+        <div class="insp-item">
+          <span class="insp-lbl">CLUSTER SECTOR:</span>
+          <span class="insp-val" id="insp-sector">TITAN (RTX)</span>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    /* =========================================================
+       AUDIO SYNTHESIZER ENGINE (Web Audio API)
+       ========================================================= */
+    let audioCtx = null;
+    let audioEnabled = false;
+
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+    }
+
+    function playTone(freq, duration = 0.08, type = 'sine', gainVal = 0.05) {
+      if (!audioEnabled || !audioCtx) return;
+      try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(gainVal, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    function playNoise(duration = 0.2, gainVal = 0.04) {
+      if (!audioEnabled || !audioCtx) return;
+      try {
+        const bufferSize = audioCtx.sampleRate * duration;
+        const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const output = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          output[i] = Math.random() * 2 - 1;
+        }
+        const whiteNoise = audioCtx.createBufferSource();
+        whiteNoise.buffer = buffer;
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(1200, audioCtx.currentTime);
+        filter.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + duration);
+
+        const gain = audioCtx.createGain();
+        gain.gain.setValueAtTime(gainVal, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+
+        whiteNoise.connect(filter);
+        filter.connect(gain);
+        gain.connect(audioCtx.destination);
+        whiteNoise.start();
+      } catch (e) {}
+    }
+
+    document.getElementById('btn-audio-toggle').addEventListener('click', () => {
+      initAudio();
+      audioEnabled = !audioEnabled;
+      const btn = document.getElementById('btn-audio-toggle');
+      if (audioEnabled) {
+        btn.textContent = '🔊 AUDIO: ON';
+        btn.style.borderColor = 'var(--cyan)';
+        playTone(980, 0.1, 'triangle', 0.08);
+      } else {
+        btn.textContent = '🔇 AUDIO: OFF';
+        btn.style.borderColor = 'var(--border-cyan)';
+      }
+    });
+
+    /* =========================================================
+       ARENA CANVAS & SPATIAL ENVIRONMENT SETUP
+       ========================================================= */
+    const canvas = document.getElementById('arena-canvas');
+    const ctx = canvas.getContext('2d');
+    let width = 0, height = 0;
+
+    function resize() {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight - 56; // minus header
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Species enumeration
+    const SPECIES = {
+      PREDATOR: 'PREDATOR',   // Crimson
+      FORAGER: 'FORAGER',     // Emerald
+      SCAVENGER: 'SCAVENGER'  // Cyan
+    };
+
+    let globalGeneration = 1;
+    let totalMigrations = 0;
+    let isEmpActive = false;
+    let empTimer = 0;
+    let vortexMode = 'attract'; // attract or repel
+    let mouse = { x: -1, y: -1, isDown: false, btn: 0 };
+    let inspectedOrganism = null;
+
+    /* =========================================================
+       QUANTUM FOOD & DECAY PARTICLES
+       ========================================================= */
+    class FoodParticle {
+      constructor(x, y, energy = 35, isCorpse = false) {
+        this.x = x ?? Math.random() * width;
+        this.y = y ?? Math.random() * height;
+        this.vx = (Math.random() - 0.5) * 0.4;
+        this.vy = (Math.random() - 0.5) * 0.4;
+        this.energy = energy;
+        this.radius = isCorpse ? 3.5 : 2.2;
+        this.isCorpse = isCorpse;
+        this.lifespan = isCorpse ? 900 : Infinity;
+        this.color = isCorpse ? '#ec4899' : '#10b981';
+      }
+      update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        if (this.x < 0) this.x = width;
+        if (this.x > width) this.x = 0;
+        if (this.y < 0) this.y = height;
+        if (this.y > height) this.y = 0;
+        if (this.isCorpse) this.lifespan--;
+      }
+      draw() {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fillStyle = this.color;
+        ctx.shadowColor = this.color;
+        ctx.shadowBlur = this.isCorpse ? 6 : 4;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+    }
+
+    /* =========================================================
+       AUTONOMOUS CYBER-ORGANISM CLASS
+       ========================================================= */
+    let organismIdCounter = 100;
+
+    class CyberOrganism {
+      constructor(species, x, y, genome = null, gen = 1) {
+        this.id = organismIdCounter++;
+        this.species = species;
+        this.x = x ?? Math.random() * width;
+        this.y = y ?? Math.random() * height;
+        this.vx = (Math.random() - 0.5) * 2;
+        this.vy = (Math.random() - 0.5) * 2;
+        this.heading = Math.atan2(this.vy, this.vx);
+        this.gen = gen;
+        this.age = 0;
+        this.kills = 0;
+        this.energy = species === SPECIES.PREDATOR ? 160 : (species === SPECIES.FORAGER ? 100 : 120);
+        this.maxEnergy = species === SPECIES.PREDATOR ? 280 : (species === SPECIES.FORAGER ? 180 : 200);
+
+        // Genome traits (inheritable & mutable)
+        if (genome) {
+          this.genome = {
+            maxSpeed: genome.maxSpeed,
+            sensorRange: genome.sensorRange,
+            sensorFov: genome.sensorFov,
+            turnAgility: genome.turnAgility,
+            metabolism: genome.metabolism,
+            size: genome.size,
+            raysCount: genome.raysCount
+          };
+        } else {
+          // Baseline presets by species
+          if (species === SPECIES.PREDATOR) {
+            this.genome = {
+              maxSpeed: 3.2 + Math.random() * 0.8,
+              sensorRange: 130 + Math.random() * 30,
+              sensorFov: Math.PI * 0.75,
+              turnAgility: 0.12,
+              metabolism: 0.14,
+              size: 6.5,
+              raysCount: 5
+            };
+          } else if (species === SPECIES.FORAGER) {
+            this.genome = {
+              maxSpeed: 2.2 + Math.random() * 0.6,
+              sensorRange: 90 + Math.random() * 25,
+              sensorFov: Math.PI * 0.85,
+              turnAgility: 0.15,
+              metabolism: 0.08,
+              size: 4.5,
+              raysCount: 3
+            };
+          } else { // SCAVENGER
+            this.genome = {
+              maxSpeed: 2.6 + Math.random() * 0.6,
+              sensorRange: 110 + Math.random() * 30,
+              sensorFov: Math.PI * 0.9,
+              turnAgility: 0.14,
+              metabolism: 0.09,
+              size: 5.0,
+              raysCount: 4
+            };
+          }
+        }
+
+        this.trail = [];
+        this.maxTrailLength = species === SPECIES.PREDATOR ? 12 : 8;
+        this.lastSector = this.x < width / 2 ? 1 : 2;
+        this.alive = true;
+      }
+
+      mutate(rate = 0.15) {
+        this.genome.maxSpeed = Math.max(1.2, this.genome.maxSpeed + (Math.random() - 0.5) * rate * 2);
+        this.genome.sensorRange = Math.max(60, this.genome.sensorRange + (Math.random() - 0.5) * rate * 40);
+        this.genome.turnAgility = Math.max(0.05, Math.min(0.3, this.genome.turnAgility + (Math.random() - 0.5) * rate * 0.08));
+        this.genome.metabolism = Math.max(0.04, this.genome.metabolism + (Math.random() - 0.5) * rate * 0.04);
+      }
+
+      update(foods, organisms) {
+        if (!this.alive) return;
+        this.age++;
+        this.energy -= this.genome.metabolism;
+
+        // Death by starvation
+        if (this.energy <= 0) {
+          this.die(foods);
+          return;
+        }
+
+        // Check sector migration (portal across middle)
+        const currentSector = this.x < width / 2 ? 1 : 2;
+        if (currentSector !== this.lastSector) {
+          this.lastSector = currentSector;
+          totalMigrations++;
+          document.getElementById('migration-counter').textContent = `${totalMigrations} MIGRATIONS`;
+          playTone(1300 + Math.random() * 300, 0.04, 'sine', 0.02);
+        }
+
+        // EMP Sensor Jamming Effect
+        let effectiveSensorRange = isEmpActive ? this.genome.sensorRange * 0.15 : this.genome.sensorRange;
+
+        // Neural Steering Behaviors
+        let steerX = 0, steerY = 0;
+
+        // 1. Vortex Mouse Influence
+        if (mouse.isDown && mouse.x >= 0) {
+          const mdx = mouse.x - this.x;
+          const mdy = mouse.y - this.y;
+          const mdist = Math.sqrt(mdx * mdx + mdy * mdy);
+          if (mdist < 340) {
+            const force = (1 - mdist / 340) * 0.8;
+            const sign = (vortexMode === 'attract') ? 1 : -1;
+            steerX += (mdx / mdist) * force * sign;
+            steerY += (mdy / mdist) * force * sign;
+          }
+        }
+
+        // 2. Sensory Whiskers & Food / Prey / Threat Scan
+        let nearestFood = null;
+        let minFoodDist = effectiveSensorRange;
+
+        if (this.species === SPECIES.PREDATOR) {
+          // Hunt Foragers and Scavengers
+          for (let other of organisms) {
+            if (!other.alive || other.species === SPECIES.PREDATOR) continue;
+            const dx = other.x - this.x;
+            const dy = other.y - this.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < minFoodDist) {
+              minFoodDist = dist;
+              nearestFood = other;
+            }
+          }
+        } else if (this.species === SPECIES.FORAGER) {
+          // Forage Quantum Energy nodes & avoid predators
+          for (let food of foods) {
+            if (food.isCorpse) continue;
+            const dx = food.x - this.x;
+            const dy = food.y - this.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < minFoodDist) {
+              minFoodDist = dist;
+              nearestFood = food;
+            }
+          }
+          // Evasion from Predators
+          for (let other of organisms) {
+            if (!other.alive || other.species !== SPECIES.PREDATOR) continue;
+            const dx = other.x - this.x;
+            const dy = other.y - this.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < effectiveSensorRange * 0.9) {
+              const evadeForce = (1 - dist / effectiveSensorRange) * 1.5;
+              steerX -= (dx / dist) * evadeForce;
+              steerY -= (dy / dist) * evadeForce;
+            }
+          }
+        } else { // SCAVENGER
+          // Target decaying corpses and energy scraps
+          for (let food of foods) {
+            const dx = food.x - this.x;
+            const dy = food.y - this.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < minFoodDist) {
+              minFoodDist = dist;
+              nearestFood = food;
+            }
+          }
+        }
+
+        // Steer towards target
+        if (nearestFood) {
+          const dx = nearestFood.x - this.x;
+          const dy = nearestFood.y - this.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist > 0) {
+            steerX += (dx / dist) * 0.7;
+            steerY += (dy / dist) * 0.7;
+          }
+
+          // Ingestion / Consumption
+          if (dist < this.genome.size + 4) {
+            this.consume(nearestFood, foods);
+          }
+        }
+
+        // Wander / Perlin-like noise
+        steerX += (Math.random() - 0.5) * 0.35;
+        steerY += (Math.random() - 0.5) * 0.35;
+
+        // Apply steering & turn agility
+        this.vx += steerX * this.genome.turnAgility;
+        this.vy += steerY * this.genome.turnAgility;
+
+        // Speed clamping
+        const currentSpeed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+        if (currentSpeed > this.genome.maxSpeed) {
+          this.vx = (this.vx / currentSpeed) * this.genome.maxSpeed;
+          this.vy = (this.vy / currentSpeed) * this.genome.maxSpeed;
+        }
+
+        // Update position
+        this.x += this.vx;
+        this.y += this.vy;
+        this.heading = Math.atan2(this.vy, this.vx);
+
+        // Arena boundary wrapping
+        if (this.x < 0) this.x = width;
+        if (this.x > width) this.x = 0;
+        if (this.y < 0) this.y = height;
+        if (this.y > height) this.y = 0;
+
+        // History trail
+        this.trail.unshift({ x: this.x, y: this.y });
+        if (this.trail.length > this.maxTrailLength) {
+          this.trail.pop();
+        }
+
+        // Reproduction through mitosis if energy exceeds threshold
+        if (this.energy >= this.maxEnergy) {
+          this.reproduce(organisms);
+        }
+      }
+
+      consume(target, foods) {
+        if (target instanceof FoodParticle) {
+          this.energy = Math.min(this.maxEnergy, this.energy + target.energy);
+          this.kills++;
+          const idx = foods.indexOf(target);
+          if (idx !== -1) foods.splice(idx, 1);
+          playTone(600 + Math.random() * 200, 0.04, 'sine', 0.02);
+        } else if (target instanceof CyberOrganism && this.species === SPECIES.PREDATOR) {
+          this.energy = Math.min(this.maxEnergy, this.energy + target.energy * 0.8);
+          this.kills++;
+          target.die(foods);
+          playNoise(0.18, 0.05);
+        }
+      }
+
+      reproduce(organisms) {
+        this.energy = this.energy * 0.45;
+        const offspring = new CyberOrganism(
+          this.species,
+          this.x + (Math.random() - 0.5) * 10,
+          this.y + (Math.random() - 0.5) * 10,
+          this.genome,
+          this.gen + 1
+        );
+        offspring.mutate(0.08);
+        organisms.push(offspring);
+
+        if (offspring.gen > globalGeneration) {
+          globalGeneration = offspring.gen;
+          document.getElementById('val-generation').textContent = `GEN #${globalGeneration}`;
+        }
+        playTone(1100 + Math.random() * 400, 0.06, 'triangle', 0.04);
+      }
+
+      die(foods) {
+        this.alive = false;
+        // Spawn decaying food corpse
+        foods.push(new FoodParticle(this.x, this.y, 45, true));
+        if (inspectedOrganism === this) {
+          inspectedOrganism = null;
+          document.getElementById('inspector-card').style.display = 'none';
+        }
+      }
+
+      draw() {
+        if (!this.alive) return;
+
+        const isInspected = inspectedOrganism === this;
+
+        // Species Colors
+        let color = '#00f0ff';
+        let glow = 'rgba(0, 240, 255, 0.4)';
+        if (this.species === SPECIES.PREDATOR) {
+          color = '#f43f5e';
+          glow = 'rgba(244, 63, 94, 0.4)';
+        } else if (this.species === SPECIES.FORAGER) {
+          color = '#10b981';
+          glow = 'rgba(16, 185, 129, 0.4)';
+        }
+
+        // Draw Motion Trail
+        ctx.beginPath();
+        for (let i = 0; i < this.trail.length; i++) {
+          const pt = this.trail[i];
+          if (i === 0) ctx.moveTo(pt.x, pt.y);
+          else ctx.lineTo(pt.x, pt.y);
+        }
+        ctx.strokeStyle = glow;
+        ctx.lineWidth = this.genome.size * 0.6;
+        ctx.stroke();
+
+        // Draw Sensory Raycasts (whiskers) if inspected or predator
+        if (isInspected || this.species === SPECIES.PREDATOR) {
+          const rays = this.genome.raysCount;
+          const range = isEmpActive ? this.genome.sensorRange * 0.15 : this.genome.sensorRange;
+          const fov = this.genome.sensorFov;
+          const angleStep = fov / (rays - 1 || 1);
+
+          ctx.lineWidth = isInspected ? 1.2 : 0.6;
+          for (let r = 0; r < rays; r++) {
+            const rayAngle = this.heading - (fov / 2) + (r * angleStep);
+            const rx = this.x + Math.cos(rayAngle) * range;
+            const ry = this.y + Math.sin(rayAngle) * range;
+
+            ctx.beginPath();
+            ctx.moveTo(this.x, this.y);
+            ctx.lineTo(rx, ry);
+            ctx.strokeStyle = isInspected ? 'rgba(0, 240, 255, 0.45)' : 'rgba(244, 63, 94, 0.12)';
+            ctx.stroke();
+          }
+        }
+
+        // Draw Cyber-Organism Body (Teardrop / Aerodynamic Dart)
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.heading);
+
+        // Highlight ring if inspected
+        if (isInspected) {
+          ctx.beginPath();
+          ctx.arc(0, 0, this.genome.size + 6, 0, Math.PI * 2);
+          ctx.strokeStyle = '#fff';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        }
+
+        ctx.beginPath();
+        ctx.moveTo(this.genome.size * 1.5, 0);
+        ctx.lineTo(-this.genome.size, -this.genome.size * 0.8);
+        ctx.lineTo(-this.genome.size * 0.4, 0);
+        ctx.lineTo(-this.genome.size, this.genome.size * 0.8);
+        ctx.closePath();
+
+        ctx.fillStyle = color;
+        ctx.shadowColor = color;
+        ctx.shadowBlur = isInspected ? 12 : 6;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        ctx.restore();
+      }
+    }
+
+    /* =========================================================
+       SWARM MANAGER & POPULATION STATE
+       ========================================================= */
+    let organisms = [];
+    let foods = [];
+
+    function initSwarm() {
+      organisms = [];
+      foods = [];
+      globalGeneration = 1;
+
+      // Seed 18 Apex Predators
+      for (let i = 0; i < 18; i++) {
+        organisms.push(new CyberOrganism(SPECIES.PREDATOR));
+      }
+      // Seed 46 Herbivore Foragers
+      for (let i = 0; i < 46; i++) {
+        organisms.push(new CyberOrganism(SPECIES.FORAGER));
+      }
+      // Seed 30 Symbiotic Scavengers
+      for (let i = 0; i < 30; i++) {
+        organisms.push(new CyberOrganism(SPECIES.SCAVENGER));
+      }
+      // Seed 120 Food particles
+      for (let i = 0; i < 120; i++) {
+        foods.push(new FoodParticle());
+      }
+    }
+    initSwarm();
+
+    /* =========================================================
+       LEADERBOARD & ANALYTICS UPDATE
+       ========================================================= */
+    const leaderContainer = document.getElementById('leaderboard-container');
+    const countPredEl = document.getElementById('count-predator');
+    const countForagEl = document.getElementById('count-forager');
+    const countScavEl = document.getElementById('count-scavenger');
+    const barPredEl = document.getElementById('bar-predator');
+    const barForagEl = document.getElementById('bar-forager');
+    const barScavEl = document.getElementById('bar-scavenger');
+    const valTotalPop = document.getElementById('val-total-pop');
+    const valFoodCount = document.getElementById('val-food-count');
+
+    function updateAnalytics() {
+      let pCount = 0, fCount = 0, sCount = 0;
+      for (let org of organisms) {
+        if (!org.alive) continue;
+        if (org.species === SPECIES.PREDATOR) pCount++;
+        else if (org.species === SPECIES.FORAGER) fCount++;
+        else sCount++;
+      }
+
+      const total = pCount + fCount + sCount;
+      valTotalPop.textContent = total;
+      valFoodCount.textContent = foods.length;
+
+      countPredEl.textContent = pCount;
+      countForagEl.textContent = fCount;
+      countScavEl.textContent = sCount;
+
+      barPredEl.style.width = `${Math.min(100, (pCount / Math.max(1, total)) * 100)}%`;
+      barForagEl.style.width = `${Math.min(100, (fCount / Math.max(1, total)) * 100)}%`;
+      barScavEl.style.width = `${Math.min(100, (sCount / Math.max(1, total)) * 100)}%`;
+
+      // Top 5 Fit Genomes
+      const sorted = [...organisms.filter(o => o.alive)].sort((a, b) => {
+        const fitnessA = a.age * 0.5 + a.kills * 20 + a.energy * 0.3 + a.gen * 15;
+        const fitnessB = b.age * 0.5 + b.kills * 20 + b.energy * 0.3 + b.gen * 15;
+        return fitnessB - fitnessA;
+      }).slice(0, 5);
+
+      leaderContainer.innerHTML = sorted.map((org, idx) => {
+        const fitScore = Math.round(org.age * 0.5 + org.kills * 20 + org.energy * 0.3 + org.gen * 15);
+        let tagClass = 'cyan';
+        if (org.species === SPECIES.PREDATOR) tagClass = 'crimson';
+        else if (org.species === SPECIES.FORAGER) tagClass = 'emerald';
+
+        return `
+          <div class="leader-row ${tagClass}" onclick="inspectById(${org.id})">
+            <span>#${idx + 1} ID-${org.id} [G${org.gen}]</span>
+            <span style="color:#fff; font-weight:700;">${fitScore} FIT</span>
+          </div>
+        `;
+      }).join('');
+
+      // Auto-replenish food if depleted
+      if (foods.length < 50) {
+        for (let i = 0; i < 30; i++) foods.push(new FoodParticle());
+      }
+
+      // If species goes extinct, inject new seed
+      if (fCount < 6) {
+        for (let i = 0; i < 8; i++) organisms.push(new CyberOrganism(SPECIES.FORAGER));
+      }
+      if (pCount === 0) {
+        for (let i = 0; i < 4; i++) organisms.push(new CyberOrganism(SPECIES.PREDATOR));
+      }
+
+      // Update Inspector if active
+      if (inspectedOrganism && inspectedOrganism.alive) {
+        document.getElementById('insp-id').textContent = `SPECIMEN ID-${inspectedOrganism.id}`;
+        document.getElementById('insp-species').textContent = inspectedOrganism.species;
+        document.getElementById('insp-gen').textContent = `GEN #${inspectedOrganism.gen}`;
+        document.getElementById('insp-energy').textContent = Math.round(inspectedOrganism.energy);
+        document.getElementById('insp-age').textContent = inspectedOrganism.age;
+        document.getElementById('insp-kills').textContent = inspectedOrganism.kills;
+        document.getElementById('insp-speed').textContent = `${inspectedOrganism.genome.maxSpeed.toFixed(1)} px/t`;
+        document.getElementById('insp-rays').textContent = `${Math.round(inspectedOrganism.genome.sensorRange)} px`;
+        document.getElementById('insp-sector').textContent = inspectedOrganism.x < width / 2 ? 'TITAN (RTX)' : 'ZEN (RYZEN)';
+      }
+    }
+
+    setInterval(updateAnalytics, 600);
+
+    window.inspectById = function(id) {
+      const org = organisms.find(o => o.id === id);
+      if (org) {
+        inspectedOrganism = org;
+        document.getElementById('inspector-card').style.display = 'block';
+        playTone(900, 0.05, 'sine', 0.05);
+      }
+    };
+
+    document.getElementById('btn-close-insp').addEventListener('click', () => {
+      inspectedOrganism = null;
+      document.getElementById('inspector-card').style.display = 'none';
+    });
+
+    /* =========================================================
+       GOD-MODE BUTTON INTERACTIONS
+       ========================================================= */
+    // 1. Quantum Supernova
+    document.getElementById('btn-supernova').addEventListener('click', () => {
+      for (let i = 0; i < 110; i++) {
+        foods.push(new FoodParticle(undefined, undefined, 45));
+      }
+      playNoise(0.4, 0.08);
+      playTone(340, 0.3, 'sawtooth', 0.08);
+    });
+
+    // 2. Radiation Mutation
+    document.getElementById('btn-radiation').addEventListener('click', () => {
+      organisms.forEach(o => o.mutate(0.35));
+      playTone(1600, 0.15, 'sawtooth', 0.07);
+      playTone(1800, 0.15, 'sawtooth', 0.07);
+    });
+
+    // 3. Solar Flare (EMP Blast)
+    const empBanner = document.getElementById('emp-banner');
+    document.getElementById('btn-emp').addEventListener('click', () => {
+      isEmpActive = true;
+      empTimer = 300; // ~5 seconds @ 60 FPS
+      empBanner.style.display = 'block';
+      playNoise(0.5, 0.1);
+    });
+
+    // 4. Vortex Mode Toggle
+    const vortexBtnText = document.getElementById('vortex-mode-text');
+    document.getElementById('btn-vortex-mode').addEventListener('click', () => {
+      if (vortexMode === 'attract') {
+        vortexMode = 'repel';
+        vortexBtnText.textContent = 'REPEL';
+        vortexBtnText.style.color = 'var(--cyan)';
+      } else {
+        vortexMode = 'attract';
+        vortexBtnText.textContent = 'ATTRACT';
+        vortexBtnText.style.color = 'var(--crimson)';
+      }
+      playTone(850, 0.08, 'triangle', 0.06);
+    });
+
+    // 5. Reset Arena
+    document.getElementById('btn-reset-arena').addEventListener('click', () => {
+      initSwarm();
+      playTone(500, 0.2, 'sine', 0.08);
+    });
+
+    /* =========================================================
+       MOUSE / TOUCH INTERACTION & GRAVITATIONAL VORTEX
+       ========================================================= */
+    canvas.addEventListener('mousedown', (e) => {
+      mouse.isDown = true;
+      mouse.btn = e.button;
+      mouse.x = e.clientX;
+      mouse.y = e.clientY - 56;
+
+      // Check if user clicked an organism to inspect
+      let clickedOrg = null;
+      for (let org of organisms) {
+        if (!org.alive) continue;
+        const dx = org.x - mouse.x;
+        const dy = org.y - mouse.y;
+        if (Math.sqrt(dx * dx + dy * dy) < org.genome.size + 10) {
+          clickedOrg = org;
+          break;
+        }
+      }
+
+      if (clickedOrg) {
+        inspectedOrganism = clickedOrg;
+        document.getElementById('inspector-card').style.display = 'block';
+        playTone(950, 0.05, 'sine', 0.05);
+      }
+    });
+
+    window.addEventListener('mouseup', () => {
+      mouse.isDown = false;
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      mouse.x = e.clientX;
+      mouse.y = e.clientY - 56;
+    });
+
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    /* =========================================================
+       MAIN 60 FPS SIMULATION LOOP
+       ========================================================= */
+    let lastTime = performance.now();
+    let frameCount = 0;
+    let fps = 60;
+    const fpsEl = document.getElementById('val-fps');
+
+    function mainLoop(now) {
+      frameCount++;
+      if (now - lastTime >= 1000) {
+        fps = frameCount;
+        frameCount = 0;
+        lastTime = now;
+        fpsEl.textContent = `${fps} FPS`;
+      }
+
+      // Handle EMP timer
+      if (isEmpActive) {
+        empTimer--;
+        if (empTimer <= 0) {
+          isEmpActive = false;
+          empBanner.style.display = 'none';
+        }
+      }
+
+      // Clear Canvas with subtle alpha fade for light trails
+      ctx.fillStyle = 'rgba(5, 7, 13, 0.28)';
+      ctx.fillRect(0, 0, width, height);
+
+      // Draw Center Inter-Sector Conduit Portal Wire
+      ctx.beginPath();
+      ctx.setLineDash([6, 6]);
+      ctx.moveTo(width / 2, 0);
+      ctx.lineTo(width / 2, height);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Draw Gravitational Singularity / Vortex FX if mouse is dragging
+      if (mouse.isDown && mouse.x >= 0) {
+        const vortexColor = vortexMode === 'attract' ? 'rgba(244, 63, 94,' : 'rgba(0, 240, 255,';
+        ctx.beginPath();
+        ctx.arc(mouse.x, mouse.y, 35 + Math.sin(now / 80) * 8, 0, Math.PI * 2);
+        ctx.strokeStyle = vortexColor + '0.6)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(mouse.x, mouse.y, 12, 0, Math.PI * 2);
+        ctx.fillStyle = vortexColor + '0.8)';
+        ctx.fill();
+      }
+
+      // Update and Draw Food Particles
+      for (let i = foods.length - 1; i >= 0; i--) {
+        const food = foods[i];
+        food.update();
+        food.draw();
+        if (food.isCorpse && food.lifespan <= 0) {
+          foods.splice(i, 1);
+        }
+      }
+
+      // Update and Draw Organisms
+      for (let i = organisms.length - 1; i >= 0; i--) {
+        const org = organisms[i];
+        if (!org.alive) {
+          organisms.splice(i, 1);
+          continue;
+        }
+        org.update(foods, organisms);
+        org.draw();
+      }
+
+      requestAnimationFrame(mainLoop);
+    }
+
+    requestAnimationFrame(mainLoop);
+  </script>
+</body>
+</html>
